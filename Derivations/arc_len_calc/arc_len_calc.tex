@@ -1,0 +1,49 @@
+\documentclass{article}
+
+\usepackage{amssymb}
+
+\title{Calculations Pertaining to Analytically Determining Arc Lengths of Gaussian Porcesses}
+\author{Nathan Wycoff}
+
+
+\begin{document}
+	\maketitle
+	
+	\section{Lines as parametric equations}
+	
+	In higher dimensional spaces, lines need to be expressed as parametric equations.
+	
+	In particular, the line segment connecting $a$ and $b$ may be expressed as such:
+	
+	$$f(t) = a + t(b-a), t \in [0,1]$$
+	
+	It may also be desireable to scale $t$ such that a one unit change in $t$ corresponds to a movement of one unit in euclidean terms in the high D space:
+	
+	$$f(t) = a + \frac{b - a}{||b - a||_2} t, t \in [0,||b - a||_2]$$
+	
+	\section{Arc Length of a GP Mean Surface for General Kernel}
+	
+	I will seek to derive the equation for the arc length along a line segment from $a$ to $b$ for a GP with arbitrary kernel function.
+	
+	In general, to derive the arc length of a function $f: \mathbb{R}^n \to \mathbb{R}$ over the curve $S$, this is the quantity of interest:
+	
+	$$\int_{s \in S} \sqrt{||s||_2 + f(s)^2} ds$$
+	
+	In our case, the mean surface of a GP is defined as such:
+	
+	$$\mu(x) = k(x)' K^{-1} y$$
+	
+	Where $k(x)$ is the kernel function evaluated with respect to each training point, stored in a vector, $K$ is the kernel matrix evaluated for training points, and $y$ is the observed training responses.
+	
+	Also, the curve is simply a line from $a$ to $b$:
+	
+	$$S = \{s : \exists t \in [0,1] \textrm{ s.t. } s = a + t(b-a) \}$$
+	
+	So we can rewrite the integral above as:
+	
+	$$\int_{t=0}^1 \sqrt{||s(t)||_2 + (k(x)'K^{-1}y)^2} = \int_{t=0}^1 \sqrt{||a + t(b-a)||_2 + (k(x)'K^{-1}y)^2}$$
+	
+	We will denote $K^{-1}y$ as $\alpha$, an n-vector.
+	
+	
+\end{document}

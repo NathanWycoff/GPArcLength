@@ -2,6 +2,7 @@
 #  playground.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 12.31.2017
 
 require(mds.methods)
+source('some_funcs.R')
 
 #Generate the points where we're going to observe the response
 n <- 20
