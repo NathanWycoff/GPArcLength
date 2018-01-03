@@ -27,7 +27,8 @@ kernel_factory <- function(type = 'squared exponential', lengthscale = 1,
 #' @param kern The covariance kernel function which induces the covariance matrix
 #' @param nugget the scalar nugget effect 
 #' @return A vector of responses of length nrow(X)
-gen_GP <- function(X, kern, nugget) {
+gen_gp <- function(X, kern, nugget) {
+    n <- nrow(X)
     #Create a defalut kernel
     if (missing(kern)) {
         kern <- kernel_factory
@@ -36,7 +37,7 @@ gen_GP <- function(X, kern, nugget) {
     SIGMA <- matrix(0, nrow = n, ncol = n)
     for (i in 1:n) {
         for (j in 1:n) {
-            SIGMA[i,j] <- kern(X[i,],X[j,]) + nugget
+            SIGMA[i,j] <- kern(X[i,],X[j,]) + (i==j) * nugget
         }
     }
 
@@ -88,7 +89,6 @@ conn_line_seg <- function(x1, x2) {
 #' #Now try the same function from 0,0 to pi/8, pi/4, answer should be 1.0046
 #' target <- function(x) -log(cos(x[1])) -log(cos(x[2]))
 #' num_arclength(target, c(0,0), c(pi/8, pi/4), 1000)
-
 arclength_limdef <- function(target, a, b, n) {
     lens <- rep(0,n)
     h <- norm(b-a, '2') / n
@@ -108,6 +108,15 @@ arclength_limdef <- function(target, a, b, n) {
         #lens[i] <- norm(c(y2 - y1, t2 - t1), '2')
         lens[i] <- sqrt(h2 + (y2 - y1)^2)
     }
+    return(sum(lens))
+}
+
+#' Get the arclength of line segments connecting a point cloud
+#' @param X An n by p matrix representing n many points in p dimensional space. These should be ordered according to the path of which arc length calculation is desired.
+#' @return Scalar sum of the lengths (Eucliden 2 norm) of the line segments connecting each of the points in X, ordered by the order of X's rows.
+lineseg_arclength <- function(X) {
+    ds <- diff(X)
+    lens <- apply(ds, 1, function(i) norm(i, '2'))
     return(sum(lens))
 }
 
@@ -157,12 +166,17 @@ direct_fd <- function(f, x, d, h = 1e-6) {
 gp_arclen <- function(post_mean, a, b, h = 1e-6) {
     #Set up a function to get our desired directional derivative
     d <- b - a
+
+    #Check to see if the points are right next to each other
+    if (norm(d, '2') < 1e-5) {
+        return(0)
+    }
     dkern_dir <- function(t) direct_fd(post_mean, a + t * d, d, h)
 
     #Set up the integrand for arc length
     f <- function(ins) sapply(ins, function(t) norm(d,'2') * sqrt(1 + dkern_dir(t)^2))
 
-    return(integrate(f, 0, 1))
+    return(integrate(f, 0, 1)$value)
 }
 
 #' Calculate Arc Length using a simplified limit
@@ -196,4 +210,57 @@ gp_arclen <- function(post_mean, a, b, h = 1e-6) {
 #    return(h/n * s)
 #}
 #
-##' Calculate Arc length using 
+
+#' Get posterior quantities for a GP at given locations
+#gp_get_post <- function(XX, X, y, kern, nugget) {
+#    ##Get a GP draw at this location
+#    #Create the covariance matrix
+#    SIGMA_X <- matrix(0, nrow = n, ncol = n)
+#    for (i in 1:n) {
+#        for (j in 1:n) {
+#            SIGMA_X[i,j] <- kern(X[i,],X[j,]) 
+#        }
+#    }
+#    
+#    #Prepare variance weighted response
+#    alpha <- solve(SIGMA_X, y)
+#
+#    #Calculate kernel for old locations new locations covariance
+#    SIGMA_XX_X <- matrix(0, nrow = nn, ncol = n)
+#    for (i in 1:nn) {
+#        for (j in 1:n) {
+#            SIGMA_XX_X[i,j] <- kern(XX[i,], X[j,])
+#        }
+#    }
+#
+#    #Calculate kernel for new locations
+#    SIGMA_XX <- matrix(0, nrow = nn, ncol = nn)
+#    for (i in 1:nn) {
+#        for (j in 1:nn) {
+#            SIGMA_XX[i,j] <- kern(XX[i,], XX[j,])
+#        }
+#    }
+#
+#    #Get the mean and variance
+#    mu <- SIGMA_XX_X %*% alpha
+#    SIGMA <- SIGMA_XX - SIGMA_XX_X %*% solve(SIGMA_X, t(SIGMA_XX_X))
+#
+#    return(list(mu = mu, SIGMA = SIGMA))
+#}
+#
+##' Calculate the expected arc length from one point to another for a GP by evaluating the mean surface at many points along the connecting line and summing the lengths of the line segment
+#lim_exp_arclen <- function(X, y, kern, nugget, nn = 1e4) {
+#    n <- nrow(X)
+#
+#    #Get a bunch of points along the line from a to b
+#    l <- conn_line_seg(a, b)
+#    XX <- do.call(rbind, lapply(1:nn, function(i) l(i * d / nn)))
+#
+#    #Get posterior quantities
+#    post <- gp_get_post(XX, X, y, kern, nugget)
+#
+#    #Create a MVNormal draw from the implied covariance matrix and mean
+#    GAMMA <- solve(chol(post$SIGMA + diag(.Machine$double.eps^(1/2), nrow(post$SIGMA))))
+#    z <- rnorm(nn)
+#    yy <- GAMMA %*% z + post$mu
+#}
