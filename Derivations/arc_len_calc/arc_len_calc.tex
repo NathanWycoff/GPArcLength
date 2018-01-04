@@ -1,5 +1,6 @@
 \documentclass{article}
 
+\usepackage{amsmath}
 \usepackage{amssymb}
 
 \title{Calculations Pertaining to Analytically Determining Arc Lengths of Gaussian Porcesses}
@@ -21,29 +22,53 @@
 	
 	$$f(t) = a + \frac{b - a}{||b - a||_2} t, t \in [0,||b - a||_2]$$
 	
-	\section{Arc Length of a GP Mean Surface for General Kernel}
+	\section{Generalized Arc Length of a GP Mean Surface for General Kernel}
 	
-	I will seek to derive the equation for the arc length along a line segment from $a$ to $b$ for a GP with arbitrary kernel function.
+    In this section, we will semi-rigorously derive the arc length along a line for $\mathbb{R}^n$ equipped with an p-norm along a GP mean surface, a slight generalization of arc length in Euclidean space, which follows a very similar derivation.
 	
-	In general, to derive the arc length of a function $f: \mathbb{R}^n \to \mathbb{R}$ over the curve $S$, this is the quantity of interest:
+    Begin with the limit definition of arc-length from $a$ to $b$, $a,b \in \mathbb{R}^n$. Let $t_i = a + \frac{b-a}{n}i$ (that is, $t_i$ represents some point along the line from $a$ to $b$), and $s(x,y)$ represent the line segment from $x$ to $y$.
+
+    $$\textrm{ArcLen} = \lim_{n\to\infty} \sum_{i=1}^{n} ||s(\mu(t_i), \mu(t_{i-1})||_p$$
+
+    That is, simply the sum of the vanishingly small line segments along the path.
+
+    For p-norms, we can separate the norm as such:
+
+    $$\textrm{ArcLen} = \lim_{n\to\infty} \sum_{i=1}^{n} (||s(t_i,t_{i-1})||_p^p + (|\mu(t_i) - \mu(t_{i-1})|)^p)^{\frac{1}{p}}$$
+
+	and re-arrange the limit:
+
+    $$ = \lim_{n\to\infty} \sum_{i=1}^{n} (||s(t_i,t_{i-1})||_p^p + (|\mu(t_{i-1} + \frac{b-a}{n}) - \mu(t_{i-1})|)^p)^{\frac{1}{p}}$$
+    
+    $$ = \lim_{n\to\infty} \sum_{i=1}^{n} ((\frac{||b-a||_p}{n})^p + (|\mu(t_{i-1} + 
+    \frac{||b-a||_p}{n} \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})|)^p)^{\frac{1}{p}}$$
+    	
+    $$ =  \lim_{n\to\infty} \sum_{i=1}^{n} ((\frac{||b-a||_p}{n})^p + (|\frac{||b-a||_p}{n} \frac{\mu(t_{i-1} + 
+    \frac{||b-a||_p}{n} \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})}{\frac{||b-a||_p}{n}}|)^p)^{\frac{1}{p}}$$
+
+	$$ =  ||b-a||_p\lim_{n\to\infty} \frac{1}{n} \sum_{i=1}^{n} ( 1 + (|\frac{\mu(t_{i-1} + 
+		\frac{||b-a||_p}{n} \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})}{\frac{||b-a||_p}{n}}|)^p)^{\frac{1}{p}}$$
 	
-	$$\int_{s \in S} \sqrt{||s||_2 + f(s)^2} ds$$
+	 We notice that, $n\to \infty \implies \frac{||b-a||_p}{n} \to 0$, which means that:
+	 
+	 $$ \lim_{n\to\infty}  \frac{\mu(t_{i-1} + 
+	 	\frac{||b-a||_p}{n} \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})}{\frac{||b-a||_p}{n}} = 
+ 	\lim_{h\to 0}  \frac{\mu(t_{i-1} + 
+ 		h \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})}{h} $$
+ 	
+ 	$ = (\nabla_{b-a} \mu)(t_{i-1})$, the directional derivative of $\mu$ in the direction of $b-a$ evaluated at $t_{i-1}$.
+	 
+	 Now for the hand-wavy part: speaking very loosely:
 	
-	In our case, the mean surface of a GP is defined as such:
+	$$\lim_{n\to\infty} \frac{1}{n} \sum_{i=1}^n f(t_{i}) - f(t_{i-1}) = \int_{a}^b f(t)dt$$
 	
-	$$\mu(x) = k(x)' K^{-1} y$$
+	so we have, in our case:
 	
-	Where $k(x)$ is the kernel function evaluated with respect to each training point, stored in a vector, $K$ is the kernel matrix evaluated for training points, and $y$ is the observed training responses.
+	$$||b-a||_p\lim_{n\to\infty} \frac{1}{n} \sum_{i=1}^{n} ( 1 + (|\frac{\mu(t_{i-1} + 
+		\frac{||b-a||_p}{n} \frac{b-a}{||b-a||_p}) - \mu(t_{i-1})}{\frac{||b-a||_p}{n}}|)^p)^{\frac{1}{p}} $$
 	
-	Also, the curve is simply a line from $a$ to $b$:
+	$$= \int_{0}^{1} (1 + (|\nabla_{b-a} \mu)(a + t(b-a)|)^p)^{1/p} dt$$
 	
-	$$S = \{s : \exists t \in [0,1] \textrm{ s.t. } s = a + t(b-a) \}$$
-	
-	So we can rewrite the integral above as:
-	
-	$$\int_{t=0}^1 \sqrt{||s(t)||_2 + (k(x)'K^{-1}y)^2} = \int_{t=0}^1 \sqrt{||a + t(b-a)||_2 + (k(x)'K^{-1}y)^2}$$
-	
-	We will denote $K^{-1}y$ as $\alpha$, an n-vector.
-	
+	, our desired result.
 	
 \end{document}
