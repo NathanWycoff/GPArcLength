@@ -1,7 +1,7 @@
 #!/usr/bin/Rscript
 #  viz_testing.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.02.2018
 
-#Try visualizing some data using arc length
+#Try visualizing some very basic data using arc length
 
 require(mds.methods)
 source('some_funcs.R')

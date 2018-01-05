@@ -31,7 +31,7 @@ gen_gp <- function(X, kern, nugget) {
     n <- nrow(X)
     #Create a defalut kernel
     if (missing(kern)) {
-        kern <- kernel_factory
+        kern <- kernel_factory()
     }
     #Create the covariance matrix
     SIGMA <- matrix(0, nrow = n, ncol = n)
@@ -42,9 +42,9 @@ gen_gp <- function(X, kern, nugget) {
     }
 
     #Create a MVNormal draw from the implied covariance matrix
-    GAMMA <- solve(chol(SIGMA))
+    GAMMA <- chol(SIGMA)
     z <- rnorm(n)
-    y <- GAMMA %*% z
+    y <- t(GAMMA) %*% z
 
     return(y)
 }
@@ -131,7 +131,7 @@ gp_post_mean_factory <- function(X, y, kern, nugget) {
     SIGMA <- matrix(0, nrow = n, ncol = n)
     for (i in 1:n) {
         for (j in 1:n) {
-            SIGMA[i,j] <- kern(X[i,],X[j,]) + nugget
+            SIGMA[i,j] <- kern(X[i,],X[j,]) + (i==j) * nugget
         }
     }
     
