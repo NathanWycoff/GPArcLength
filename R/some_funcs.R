@@ -1,5 +1,7 @@
 #!/usr/bin/Rscript
-#  generate_from_gp.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 12.31.2017
+#  some_funcs.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 12.31.2017
+
+require(Matrix)
 
 #' Create a kernel function to specs
 #' @param type What kind of kernel? Currently only 'squared exponential' is allowed (and is implied to be seperable)
@@ -43,6 +45,48 @@ gen_gp <- function(X, kern, nugget) {
 
     #Create a MVNormal draw from the implied covariance matrix
     GAMMA <- chol(SIGMA)
+    z <- rnorm(n)
+    y <- t(GAMMA) %*% z
+
+    return(y)
+}
+
+#TODO: Not just in 1D, use Convex hulls
+#' Generate Data from a multiple GP model
+#' @param X The locations where data were observed, an n by p matrix for n observations in p dimensional spcae.
+#' @param A1 A tuple c(x1, x2), the location of the first set, with x1 < x2.
+#' @param A2 A tuple C(x1, x2), the location of the second set, with x1 < x2. Should not overlap with A1
+#' @param kern1
+#' @param kern2
+#' @param kern12
+#' @return A vector of responses of length nrow(X)
+gen_mult_gp <- function(X, A1, A2, kern1, kern2, kern12) {
+    n <- nrow(X)
+    #Create the covariance matrix
+    #What kernel we use depends on where the points are in space
+    SIGMA <- matrix(0, nrow = n, ncol = n)
+    for (i in 1:n) {
+        for (j in 1:n) {
+            if (A1[1] <= X[i,]  && X[i,] <= A1[2] && A1[1] <= X[j,] && X[j,] <= A1[2]) {
+                #If both points are in A1
+                SIGMA[i,j] <- kern1(X[i,],X[j,]) + (i==j) * nugget
+            } else if (A2[1] <= X[i,]  && X[i,] <= A2[2] && A2[1] <= X[j,] && X[j,] <= A2[2]) {
+                #If both points are in A2
+                SIGMA[i,j] <- kern2(X[i,],X[j,]) + (i==j) * nugget
+            } else {
+                #Otherwise, use the global link
+                SIGMA[i,j] <- kern12(X[i,],X[j,]) + (i==j) * nugget
+            }
+        }
+    }
+
+    #This SIGMA may not be PSD, so we find the nearest PSD matrix
+    #This is done by simply setting any negative eigenvalues to 0
+    PSD_approx <- nearPD(SIGMA)$mat
+
+
+    #Create a MVNormal draw from the implied covariance matrix
+    GAMMA <- chol(PSD_approx)
     z <- rnorm(n)
     y <- t(GAMMA) %*% z
 
@@ -125,7 +169,7 @@ lineseg_arclength <- function(X) {
 #' @param y The reponse corresponding to the X matrix locations.
 #' @param kern The covariance kernel function which induces the covariance matrix
 #' @param nugget the scalar nugget effect 
-#' @return A function of 1 parameter which will in turn return the predictive mean at that location
+#' @return A function of 1 parameter, representing a single predictive location, which will in turn return the predictive mean at that location
 gp_post_mean_factory <- function(X, y, kern, nugget) {
     #Create the covariance matrix
     SIGMA <- matrix(0, nrow = n, ncol = n)
