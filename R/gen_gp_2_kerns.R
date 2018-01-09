@@ -10,7 +10,7 @@ source('some_funcs.R')
 ######### Generate some data with specified weirdness
 set.seed(1234)
 n <- 50
-p <- 10
+p <- 1
 X <- matrix(runif(n*p), ncol = p)
 #X <- matrix(seq(0,1,length.out=n), ncol = p)
 
@@ -103,12 +103,12 @@ low_d2 <- euc_mds$par
 cols <- c('red', 'blue')
 
 par(mfrow=c(1,2))
-plot(cart2polar(low_d1), lwd = 0, main = paste('GPArclength MDS', 'stress:',gparc_mds$value), 
+plot(low_d1, lwd = 0, main = paste('GPArclength MDS', 'stress:',gparc_mds$value), 
      lty=0)
 text(low_d1[,1], low_d1[,2], 1:n, col = cols[(r > s) + 1])
 
-plot(low_d1, lwd = 0, main = paste('Euclidean MDS', 'stress:',euc_mds$value), lty=0)
-text(low_d1[,1], low_d1[,2], 1:n, col = cols[(r > s) + 1])
+plot(low_d2, lwd = 0, main = paste('Euclidean MDS', 'stress:',euc_mds$value), lty=0)
+text(low_d2[,1], low_d2[,2], 1:n, col = cols[(r > s) + 1])
 
 #Get the two distance matrices and compare them
 low_1 <- as.matrix(dist(low_d1))

@@ -3,6 +3,8 @@
 
 require(Matrix)
 
+source('cubic_interpolant.R')
+
 #' Create a kernel function to specs
 #' @param type What kind of kernel? Currently only 'squared exponential' is allowed (and is implied to be seperable)
 #' @param lengthscale For the squared exponential kernel, the separable lengthscale parameter
@@ -45,6 +47,75 @@ gen_gp <- function(X, kern, nugget) {
 
     #Create a MVNormal draw from the implied covariance matrix
     GAMMA <- chol(SIGMA)
+    z <- rnorm(n)
+    y <- t(GAMMA) %*% z
+
+    return(y)
+}
+
+#TODO: Not just in 1D, use Convex hulls
+#' Generate Data from a multiple GP model
+#' @param X The locations where data were observed, an n by p matrix for n observations in p dimensional spcae.
+#' @param a1 The end of the first set
+#' @param a2 The beginning of the second set
+#' @param kern1
+#' @param kern2
+#' @return A vector of responses of length nrow(X)
+# Verdict: issues with larger overwhelming smaller
+gen_mult_gp_smooth <- function(X, a1, a2, kern1, kern2) {
+    n <- nrow(X)
+    #Create the covariance matrix
+    #What kernel we use depends on where the points are in space
+    SIGMA <- matrix(0, nrow = n, ncol = n)
+    for (i in 1:n) {
+        for (j in 1:n) {
+            #Get the first point's kernel:
+            if (X[i,] <= a1) {
+                kl <- kern1(X[i,], X[j,])
+            } else if (X[i,] >= a2) {
+                kl <- kern2(X[i,], X[j,])
+            } else {
+                #Prepare interpolant
+                cp1 <- a1
+                cp2 <- a2
+                k1 <- kern1(X[i,], X[j,])
+                k2 <- kern2(X[i,], X[j,])
+                k1p <- scalar_fd(function(a) kern1(a, X[j,]), cp1)
+                k2p <- scalar_fd(function(a) kern2(a, X[j,]), cp2)
+                interp <- get_interp(cp1, cp2, k1, k2, k1p, k2p)
+
+                kl <- interp(X[i,])
+            }
+            #Get the second point's kernel:
+            if (X[j,] <= a1) {
+                kr <- kern1(X[i,], X[j,])
+            } else if (X[j,] >= a2) {
+                kr <- kern2(X[i,], X[j,])
+            } else {
+                #Prepare interpolant
+                cp1 <- a1
+                cp2 <- a2
+                k1 <- kern1(X[i,], X[j,])
+                k2 <- kern2(X[i,], X[j,])
+                k1p <- scalar_fd(function(a) kern1(X[i,], a), cp1)
+                k2p <- scalar_fd(function(a) kern2(X[i,], a), cp2)
+                interp <- get_interp(cp1, cp2, k1, k2, k1p, k2p)
+
+                kr <- interp(X[j,])
+            }
+
+            #Finally, assign a value to the covariance matrix
+            SIGMA[i, j] <- max(kl, kr) + (i==j) * nugget
+            #SIGMA[i, j] <- 2/(1/kl + 1/kr) + (i==j) * nugget
+        }
+    }
+
+    #This SIGMA may not be PSD, so we find the nearest PSD matrix
+    #This is done by simply setting any negative eigenvalues to 0
+    PSD_approx <- nearPD(SIGMA)$mat
+
+    #Create a MVNormal draw from the implied covariance matrix
+    GAMMA <- chol(PSD_approx)
     z <- rnorm(n)
     y <- t(GAMMA) %*% z
 
@@ -187,6 +258,17 @@ gp_post_mean_factory <- function(X, y, kern, nugget) {
     return(f)
 }
 
+
+#' Calculate the a 1D derivative use (forward) finite differences
+#' @param f The function to differentiate
+#' @param x The point at which to evaluate the derivative (a scalar)
+#' @param h How far to move forards (a scalar)
+#' @return The approximate value of the derivative
+scalar_fd <- function(f, x, h = 1e-6) {
+    num <- f(x + h) - f(x)
+    return(num / h)
+}
+
 #' Calculate the directional gradient using (forward) finite differences
 #' @param f The function to differentiate
 #' @param x The point at which to evaluate the derivative (a vector)
@@ -222,89 +304,3 @@ gp_arclen <- function(post_mean, a, b, h = 1e-6) {
 
     return(integrate(f, 0, 1)$value)
 }
-
-#' Calculate Arc Length using a simplified limit
-#gp_lim_simplified <- function(post_mean, a, b, n = 1e5) {
-#    d <- b - a
-#    h <- norm(d, '2')
-#    s <- 0
-#    for (i in 1:n) {
-#        tim1 <- a + (b - a) / n * i
-#        f1 <- post_mean(tim1)
-#        f2 <- post_mean(tim1 + 1/n * d) 
-#        s <- s + sqrt(1 +  ((f2 - f1) / (h/n))^2)
-#    }
-#
-#    return(h/n * s)
-#}
-#
-##' Calculate Arc Length using a simplified limit and conn_line_segs
-#gp_lim_simplified_conn <- function(post_mean, a, b, n = 1e5) {
-#    d <- b - a
-#    h <- norm(d, '2')
-#    l <- conn_line_seg(a, b)
-#    f1 <- post_mean(a)
-#    s <- 0
-#    for (i in 1:n) {
-#        f2 <- post_mean(l(h*i/n))
-#        s <- s + sqrt(1 +  ((f2 - f1) / (h/n))^2)
-#        f1 <- f2
-#    }
-#
-#    return(h/n * s)
-#}
-#
-
-#' Get posterior quantities for a GP at given locations
-#gp_get_post <- function(XX, X, y, kern, nugget) {
-#    ##Get a GP draw at this location
-#    #Create the covariance matrix
-#    SIGMA_X <- matrix(0, nrow = n, ncol = n)
-#    for (i in 1:n) {
-#        for (j in 1:n) {
-#            SIGMA_X[i,j] <- kern(X[i,],X[j,]) 
-#        }
-#    }
-#    
-#    #Prepare variance weighted response
-#    alpha <- solve(SIGMA_X, y)
-#
-#    #Calculate kernel for old locations new locations covariance
-#    SIGMA_XX_X <- matrix(0, nrow = nn, ncol = n)
-#    for (i in 1:nn) {
-#        for (j in 1:n) {
-#            SIGMA_XX_X[i,j] <- kern(XX[i,], X[j,])
-#        }
-#    }
-#
-#    #Calculate kernel for new locations
-#    SIGMA_XX <- matrix(0, nrow = nn, ncol = nn)
-#    for (i in 1:nn) {
-#        for (j in 1:nn) {
-#            SIGMA_XX[i,j] <- kern(XX[i,], XX[j,])
-#        }
-#    }
-#
-#    #Get the mean and variance
-#    mu <- SIGMA_XX_X %*% alpha
-#    SIGMA <- SIGMA_XX - SIGMA_XX_X %*% solve(SIGMA_X, t(SIGMA_XX_X))
-#
-#    return(list(mu = mu, SIGMA = SIGMA))
-#}
-#
-##' Calculate the expected arc length from one point to another for a GP by evaluating the mean surface at many points along the connecting line and summing the lengths of the line segment
-#lim_exp_arclen <- function(X, y, kern, nugget, nn = 1e4) {
-#    n <- nrow(X)
-#
-#    #Get a bunch of points along the line from a to b
-#    l <- conn_line_seg(a, b)
-#    XX <- do.call(rbind, lapply(1:nn, function(i) l(i * d / nn)))
-#
-#    #Get posterior quantities
-#    post <- gp_get_post(XX, X, y, kern, nugget)
-#
-#    #Create a MVNormal draw from the implied covariance matrix and mean
-#    GAMMA <- solve(chol(post$SIGMA + diag(.Machine$double.eps^(1/2), nrow(post$SIGMA))))
-#    z <- rnorm(nn)
-#    yy <- GAMMA %*% z + post$mu
-#}
