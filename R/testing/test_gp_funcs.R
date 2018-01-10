@@ -3,7 +3,7 @@
 
 ## Some sanity testing on the basic GP functions
 
-source('some_funcs.R')
+source('../lib/some_gp_funcs.R')
 require(geometry)
 
 ##A simple 1D example
@@ -44,17 +44,17 @@ plot(X, y)
 abline(v=0.5, col = 'red')
 
 ## See if we can get a smooth local GP
-n <- 500
+n <- 200
 p <- 1
-nugget <- 0.001
+nugget <- 0.01
 
 X <- matrix(runif(n*p), ncol = p)
 
-a1 <- 4.5
-a2 <- 5.5
+a1 <- 0.45
+a2 <- 0.55
 
-kern1 <- kernel_factory(lengthscale=1, covariance = 1)
-kern2 <- kernel_factory(lengthscale=0.001, covariance = 1)
+kern1 <- kernel_factory(lengthscale=-0.1, covariance = 1)
+kern2 <- kernel_factory(lengthscale=0.01, covariance = 1)
 y <- gen_mult_gp_smooth(X, a1, a2, kern1, kern2)
 
 par(mfrow=c(1,1))
