@@ -4,8 +4,7 @@
 ## This file exists to compare various methods of arc length calculation for GP's
 
 require(microbenchmark)
-source('some_funcs.R')
-
+source('../lib/some_gp_funcs.R')
 
 ######### Generate some example data
 set.seed(123)
@@ -34,11 +33,3 @@ print(int_def_len)
 ## Use Microbenchmark to time the two
 microbenchmark(arclength_limdef(post_mean, X[2,], X[2,], 1e4), gp_arclen(post_mean, X[1,], X[2,]))
 ##Varying evaluations will vary precisions, but it seems like the integral definition is much faster
-
-### Now, calculate the expected arc length
-#Some params
-a <- X[1,]
-b <- X[2,]
-d <- b - a
-nn <- 1e2#How many points to use along arc
-

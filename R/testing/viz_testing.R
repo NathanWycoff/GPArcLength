@@ -1,10 +1,10 @@
 #!/usr/bin/Rscript
 #  viz_testing.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.02.2018
 
-#Try visualizing some very basic data using arc length
+#Ensure that running the MDS with two different seeds gets us the same answer if we have sufficiently many inits
 
 require(mds.methods)
-source('some_funcs.R')
+source('../lib/some_gp_funcs.R')
 
 ######### Generate some example data
 set.seed(123)
@@ -40,4 +40,3 @@ text(low_d2[,1], low_d2[,2], 1:n)
 low_1 <- as.matrix(dist(low_d1))
 low_2 <- as.matrix(dist(low_d2))
 print(norm(low_1 - low_2))
-

@@ -3,9 +3,11 @@
 
 ## Some functions related to Gaussian Processes
 
-require(Matrix)
-
 source('../lib/some_geom_funcs.R')
+
+cool_image <- function(X) {
+    image(X[nrow(X):1,])
+}
 
 #' Create a kernel function to specs
 #' @param type What kind of kernel? Currently only 'squared exponential' is allowed (and is implied to be seperable)
@@ -24,8 +26,12 @@ source('../lib/some_geom_funcs.R')
 #' y <- gen_gp(x, kern, nugget)
 kernel_factory <- function(type = 'squared exponential', lengthscale = 1, 
                            covariance = 1, alpha = 1) {
+    #Verify params in proper region
+    if (lengthscale <= 0 || covariance <= 0 || alpha <= 0) {
+        stop("Lengthscale, covariance, and alpha ought to be positive numbers")
+    }
     if (type == 'squared exponential')
-        return(function(x1, x2) covariance * exp(-sum((x1 - x2)^2) / lengthscale))
+        return(function(x1, x2) covariance * exp(-norm(x1 - x2, '2')^2 / lengthscale))
     else if (type == 'rational quadratic') {
         return(function(x1, x2)  {
                dist_part <- norm(x1 - x2, '2')^2 / (2 * alpha * lengthscale^2)
@@ -63,7 +69,8 @@ gen_gp <- function(X, kern, nugget) {
 }
 
 #TODO: Not just in 1D, use Convex hulls
-#' Generate Data from a multiple GP model
+#' Generate Data from a multiple GP model with space between the local zones
+#' i.e., zones do not form a partition of the space
 #' @param X The locations where data were observed, an n by p matrix for n observations in p dimensional spcae.
 #' @param a1 The end of the first set
 #' @param a2 The beginning of the second set
@@ -71,7 +78,7 @@ gen_gp <- function(X, kern, nugget) {
 #' @param kern2
 #' @return A vector of responses of length nrow(X)
 # Verdict: issues with larger overwhelming smaller
-gen_mult_gp_smooth <- function(X, a1, a2, kern1, kern2) {
+gen_nomansland <- function(X, a1, a2, kern1, kern2) {
     n <- nrow(X)
     #Create the covariance matrix
     #What kernel we use depends on where the points are in space
@@ -115,22 +122,67 @@ gen_mult_gp_smooth <- function(X, a1, a2, kern1, kern2) {
 
             #Finally, assign a value to the covariance matrix
             #SIGMA[i, j] <- max(kl, kr) + (i==j) * nugget
-            SIGMA[i, j] <- kr * kl + (i==j) * nugget
+            SIGMA[i, j] <- (kr * kl) + (i==j) * nugget
         }
     }
 
     #This SIGMA may not be PSD, so we find the nearest PSD matrix
     #This is done by simply setting any negative eigenvalues to 0
-    #PSD_approx <- nearPD(SIGMA)$mat
-    PSD_approx <- SIGMA
+    PSD_APPROX <- Matrix::nearPD(SIGMA)$mat
+    #PSD_APPROX <- SIGMA
+
+    #Plot the result sometimes
+    image(SIGMA[nrow(SIGMA):1,])
+    image(as.matrix(PSD_APPROX[nrow(PSD_APPROX):1,]))
 
     #Create a MVNormal draw from the implied covariance matrix
-    GAMMA <- chol(PSD_approx)
+    GAMMA <- chol(PSD_APPROX)
     z <- rnorm(n)
     y <- t(GAMMA) %*% z
 
     return(y)
 }
+
+#TODO: Not just in 1D, not just 2 sections
+#' Generate data from a multiple GP model
+#'
+#' Generate data from multiple GP model, the space being partitioned into sections.
+gen_partition_gp <- function(X, cp, kern1, kern2) {
+    #Determine the base kernel for each point
+    kerns <- list(kern1, kern2)
+    kern_to_use <- (X > cp) + 1
+
+    #Create the covariance matrix
+    n <- nrow(X)
+    SIGMA <- matrix(NA, nrow = n, ncol = n)
+    for (i in 1:n) {
+        for (j in 1:n) {
+            SIGMA[i, j] <- sqrt(kerns[[kern_to_use[i]]](X[i,], X[j,]) * 
+                            kerns[[kern_to_use[j]]](X[i,], X[j,]))
+            SIGMA[i, j] <- SIGMA[i, j] + (i==j) * nugget
+            #Get a little bit bigger of a nugget if we're on the boundry
+            if ( (X[i,] - cp) * (X[j,] - cp) < 0)  {
+                SIGMA[i, j] <- SIGMA[i, j] + (i==j) * nugget
+            }
+        }
+    }
+
+    #Sometimes this bad boi won't be PD
+    PSD_APPROX <- as.matrix(Matrix::nearPD(SIGMA)$mat)
+    GAMMA <- chol(PSD_APPROX)
+
+    #Plot the result sometimes
+    image(SIGMA[nrow(SIGMA):1,])
+    image(as.matrix(PSD_APPROX[nrow(PSD_APPROX):1,]))
+
+    print(norm(SIGMA - PSD_APPROX))
+
+    z <- rnorm(n)
+    y <- t(GAMMA) %*% z
+
+    return(y)
+}
+
 
 #TODO: Not just in 1D, use Convex hulls
 #' Generate Data from a multiple GP model
@@ -163,7 +215,7 @@ gen_mult_gp <- function(X, A1, A2, kern1, kern2, kern12) {
 
     #This SIGMA may not be PSD, so we find the nearest PSD matrix
     #This is done by simply setting any negative eigenvalues to 0
-    PSD_approx <- nearPD(SIGMA)$mat
+    PSD_approx <- Matrix::nearPD(SIGMA)$mat
 
 
     #Create a MVNormal draw from the implied covariance matrix
@@ -181,6 +233,7 @@ gen_mult_gp <- function(X, A1, A2, kern1, kern2, kern12) {
 #' @param nugget the scalar nugget effect 
 #' @return A function of 1 parameter, representing a single predictive location, which will in turn return the predictive mean at that location
 gp_post_mean_factory <- function(X, y, kern, nugget) {
+    n <- nrow(X)
     #Create the covariance matrix
     SIGMA <- matrix(0, nrow = n, ncol = n)
     for (i in 1:n) {

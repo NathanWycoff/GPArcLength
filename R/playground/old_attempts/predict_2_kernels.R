@@ -2,7 +2,9 @@
 #  predict_2_kernels.r Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.08.2018
 
 require(mds.methods)
-source('some_funcs.R')
+source('../../lib/some_gp_funcs.R')
+
+## Seeing what predictions looked like on the nonsmooth multiscale GP
 
 ######### Generate some data with specified weirdness
 set.seed(1234)
@@ -32,11 +34,6 @@ yd <- gen_gp(Xd, kernd, nugget)
 y <- rep(NA, n)
 y[r > s] <- yn
 y[r <= s] <- yd
-
-#Try to patch 2 kerns together
-kool_kern <- function(a, b, l1, l2) {
-    lensc <- 
-}
 
 #Only works in 1D so far.
 funky_kern <- function(x, y) {

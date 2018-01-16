@@ -1,53 +1,60 @@
 #!/usr/bin/Rscript
 #  gen_gp_2_kerns.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 01.03.2018
 
-## This file generates from a mixture of Gaussian Processes and then visualizes the output.
+## This file generates from two seperate Gaussian Processes and then visualizes the output.
 ## In one part of the space, the lenthscale is a tenth of what it is in the rest of the space
-## It is different from old_gen_ in that it generates from 1 GP model
 
 require(mds.methods)
+require(rgl)
 source('../lib/some_gp_funcs.R')
 
 #Pick a seed
 seed <- 123
 
 #Quickload
-load(paste('./data/partition_save_', seed, '.RData', sep = ''))
+load(paste('HD_2gps_save_', seed, '.RData', sep = ''))
 
 ######### Generate some data with specified weirdness
 set.seed(seed)
-n <- 50
-p <- 1
-#X <- matrix(runif(n*p), ncol = p)
-X <- matrix(seq(0,1,length.out=n), ncol = p)
+n <- 75
+p <- 2
+X <- matrix(runif(n*p), ncol = p)
 
 ## Denote the top s which have the largest inner product with the p-vector of 1's as being in the different kernel space
-#Compute the line separating the two
-sp <- 0.4#proportion of things in different kernel space
+sp <- 0.25#proportion of things in different kernel space
 s <- ceiling(sp * n)
 r <- rank(-X %*% rep(1,p))
-o <- r > s
-cp <- (min(X[!o,]) + max(X[o,])) / 2
 
-#Pick some kernels
-kernn <- kernel_factory(lengthscale=0.1)
-kernd <- kernel_factory(lengthscale=0.01)
+##Xn -- x normal, obeys the kernel for most of the space
+##Xd -- x different, obeys a kernel with a tenth of the lengthscale
+Xn <- as.matrix(X[r > s,], ncol = p)
+Xd <- as.matrix(X[r <= s,], ncol = p)
+
+#Create the kernels and the response
+kernn <- kernel_factory(lengthscale=0.5)
+kernd <- kernel_factory(lengthscale=0.1, covariance = 10)
 nugget <- 0.01
+yn <- gen_gp(Xn, kernn, nugget)
+yd <- gen_gp(Xd, kernd, nugget)
 
-y <- gen_partition_gp(X, cp, kernn, kernd)
+#Store them in one vector
+y <- rep(NA, n)
+y[r > s] <- yn
+y[r <= s] <- yd
 
-##For 1D only, plot the points as well as the normal GP fit.
-if (p == 1) {
-    quartz()
+##For 2D, make a 3D plot of the 2D X's plus the y, and add the GP mean surface to it.
+if (p == 2) {
     cols <- c('red', 'blue')
-    plot(X, y, lwd=0)
-    text(X, y, 1:n, col = cols[o + 1])
-    XX <- as.matrix(seq(0,1,length.out=200), ncol = p)
+    plot3d(X[,1], X[,2], y, col = cols[(r > s) + 1])
+
+    XX1 <- seq(0,1,length.out=10)
+    XX2 <- seq(0,1,length.out=10)
     mu <- gp_post_mean_factory(X, y, kernn, nugget)
-    yy <- sapply(1:nrow(XX), function(xx) mu(XX[xx,]))
-    points(XX, yy, col = 'red', type = 'l')
-    abline(v=cp, col = 'red')
+    #yy <- sapply(1:nrow(XX), function(xx) mu(XX[xx,]))
+    yy <- outer(XX1, XX2, Vectorize(function(i, j) as.numeric(mu(cbind(i, j)))))
+    persp3d(XX1, XX2, yy, col = 'green', add = TRUE)
 }
+
 
 ######## Visualize them using MDS with arc length distance, do it twice to ensure
 # convergence.
@@ -77,7 +84,7 @@ low_1 <- as.matrix(dist(low_d1))
 low_2 <- as.matrix(dist(low_d2))
 print(norm(low_1 - low_2))
 
-##### Compare visualizations using arc length and euclidean 2 distance
+##### Compare visualizations using arc length and euclidean distance
 post_mean <- gp_post_mean_factory(X, y, kernn, nugget)
 gp.dist <- function(a, b) gp_arclen(post_mean, a, b)
 euclidean.dist <- function(a, b) norm(b-a, '2')
@@ -96,7 +103,6 @@ cart2polar <- function(X) {
     return(Y)
 }
 
-
 # Compare the output
 low_d1 <- gparc_mds$par
 low_d2 <- euc_mds$par
@@ -106,14 +112,13 @@ cols <- c('red', 'blue')
 par(mfrow=c(1,2))
 plot(low_d1, lwd = 0, main = paste('GPArclength MDS', 'stress:',gparc_mds$value), 
      lty=0)
-text(low_d1[,1], low_d1[,2], rank(X), col = cols[(r > s) + 1])
+text(low_d1[,1], low_d1[,2], 1:n, col = cols[(r > s) + 1])
 
 plot(low_d2, lwd = 0, main = paste('Euclidean MDS', 'stress:',euc_mds$value), lty=0)
-text(low_d2[,1], low_d2[,2], rank(X), col = cols[(r > s) + 1])
+text(low_d2[,1], low_d2[,2], 1:n, col = cols[(r > s) + 1])
 
 #Get the two distance matrices and compare them
 low_1 <- as.matrix(dist(low_d1))
 low_2 <- as.matrix(dist(low_d2))
 print(norm(low_1 - low_2))
-
-save.image(paste('partition_save_', seed, '.RData', sep = ''))
+save.image(paste('2gps_save_', seed, '.RData', sep = ''))
