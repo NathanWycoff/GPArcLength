@@ -9,7 +9,7 @@ require(mds.methods)
 source('../lib/some_gp_funcs.R')
 
 #Pick a seed
-seed <- 123
+seed <- 1234
 
 #Quickload
 load(paste('./data/partition_save_', seed, '.RData', sep = ''))
@@ -79,11 +79,15 @@ print(norm(low_1 - low_2))
 
 ##### Compare visualizations using arc length and euclidean 2 distance
 post_mean <- gp_post_mean_factory(X, y, kernn, nugget)
-gp.dist <- function(a, b) gp_arclen(post_mean, a, b)
+gp.dist <- function(a, b) gp_arclen(post_mean, a, b, rel.tol = 1e1)
 euclidean.dist <- function(a, b) norm(b-a, '2')
 
+system.time(E <- good.dist(X, gp.dist))
+
+Rprof()
 gparc_mds <- smacof_forward_mds(high_d = X, weights = rep(1,p), dist.func = gp.dist, 
                                n.inits = 1)
+Rprof(NULL)
 euc_mds <- smacof_forward_mds(high_d = X, weights = rep(1,p), 
                                dist.func = euclidean.dist,
                                n.inits = 1)
@@ -95,7 +99,6 @@ cart2polar <- function(X) {
     Y[,2] <- atan(X[,2] / X[,1])
     return(Y)
 }
-
 
 # Compare the output
 low_d1 <- gparc_mds$par

@@ -256,8 +256,9 @@ gp_post_mean_factory <- function(X, y, kern, nugget) {
 #' @param a The point "from" which to evaluate the arclen (since arclength is symmetric, interchanging a and b is not of any consequence).
 #' @param b The point "to" which to evaluate the arclen (since arclength is symmetric, interchanging a and b is not of any consequence).
 #' @param h The spacing used for finite difference evaluation of the post_mean's directional derivative.
+#' @param ... Additional parameters to be passed to the 'integrate' function to calculate arc length, e.g. rel.tol. 
 #' @return The scalar arclength from a to b along the GP posterior mean surface
-gp_arclen <- function(post_mean, a, b, h = 1e-6) {
+gp_arclen <- function(post_mean, a, b, h = 1e-6, ...) {
     #Set up a function to get our desired directional derivative
     d <- b - a
 
@@ -270,5 +271,5 @@ gp_arclen <- function(post_mean, a, b, h = 1e-6) {
     #Set up the integrand for arc length
     f <- function(ins) sapply(ins, function(t) norm(d,'2') * sqrt(1 + dkern_dir(t)^2))
 
-    return(integrate(f, 0, 1)$value)
+    return(integrate(f, 0, 1, ...)$value)
 }

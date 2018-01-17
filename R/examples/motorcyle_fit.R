@@ -12,6 +12,10 @@ source('../lib/some_gp_funcs.R')
 require(tgp)
 require(mds.methods)
 
+#TODO: REMOVE
+#Take away most of the observations
+motorsim <- head(motorsim, 50)
+
 ## Make the predictor data lie in [0,1]
 motorsim$times <- (motorsim$times - min(motorsim$times)) / max(motorsim$times)
 
@@ -19,7 +23,7 @@ motorsim$times <- (motorsim$times - min(motorsim$times)) / max(motorsim$times)
 nn <- 10
 XX <- with(motorsim, seq(min(times), max(times), length.out = nn))
 fit <- with(motorsim, bgp(times, accel, XX, meanfn = 'constant', corr = 'exp', 
-          trace = T)) 
+          trace = T, m0r1 = FALSE)) 
 res <- fit$trace$XX[[1]]
 
 #Extract posterior quantities
@@ -48,7 +52,10 @@ abline(v=cutoffs[1], col = 'red')
 abline(v=cutoffs[2], col = 'blue')
 
 ### Do MDS usng Arclength
+Rprof()
 low_arclen <- smacof_forward_mds(high_d = X, weights = rep(1, 1), 
                                  dist.func = gp_dist, n.inits = 1)
+Rprof(NULL)
+
 low_euc <- smacof_forward_mds(high_d = X, weights = rep(1, 1), 
                                  dist.func = euclidean.dist, n.inits = 1)
