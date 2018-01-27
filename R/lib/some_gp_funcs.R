@@ -147,7 +147,7 @@ gen_nomansland <- function(X, a1, a2, kern1, kern2) {
 #' Generate data from a multiple GP model
 #'
 #' Generate data from multiple GP model, the space being partitioned into sections.
-gen_partition_gp <- function(X, cp, kern1, kern2) {
+gen_partition_gp <- function(X, cp, kern1, kern2, nugget) {
     #Determine the base kernel for each point
     kerns <- list(kern1, kern2)
     kern_to_use <- (X > cp) + 1

@@ -1,0 +1,10 @@
+#Do the 1D demo and then the 5D demo
+#then do the UI prototype
+
+some things to talk about:
+#- arc length computation is becoming the computational bottleneck
+- fusing arc lengths over different regions is an open problem:
+    - I have a dank method that doesn't work
+    - Adam has a spicy heuristic that might work (idk yet)
+- an "expected arc length"
+- do we want arclength along line or shortest possible arclength?

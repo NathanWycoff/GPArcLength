@@ -1,4 +1,2 @@
-Do a plot where we actually estimate the params instead of using the big one.
-do a plot in D > 1
 do it with real data (say, the motorcycle crash data)
-figure out why MDS with arclen is taking so long
+speed up arclen computing
